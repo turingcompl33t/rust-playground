@@ -1,1 +1,3 @@
 ## Rust Playground
+
+Exploring Rust.
