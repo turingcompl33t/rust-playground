@@ -1,8 +1,8 @@
 // lib.rs
 
-use std::sync::mpsc::{channel, Sender, Receiver};
-use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
+use std::sync::{Arc, Mutex};
+use std::sync::mpsc::{channel, Sender, Receiver};
 
 struct Threadpool {
     workers: Vec::<Worker>,
@@ -27,7 +27,7 @@ impl Threadpool {
         }
     }
 
-    pub fn run<F: FnOnce() + 'static>(&self, work: F) {
+    pub fn run<F: FnOnce() + Send + 'static>(&self, work: F) {
         self.sender
             .send(Box::new(work))
             .unwrap();
@@ -40,10 +40,19 @@ struct Worker {
 }
 
 impl Worker {
-    pub fn new(id: u8, receiver: Arc::<Mutex::<Receiver::<Job>>>) -> Self {
+    pub(crate) fn new(id: u8, receiver: Arc::<Mutex::<Receiver::<Job>>>) -> Self {
         let handle = std::thread::spawn(move || {
-            // TODO
+            println!("[{}] Start", id);
+            loop {
+                let job_res = receiver.lock().unwrap().recv();
+                match job_res {
+                    Ok(job) => job(),
+                    Err(_) => break
+                }
+            }
+            println!("[{}] Exit", id);
         }); 
+
         Self {
             id,
             handle
@@ -51,17 +60,42 @@ impl Worker {
     }
 }
 
-type Job = Box<dyn FnOnce() + 'static>;
+type Job = Box<dyn FnOnce() + Send + 'static>;
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::thread;
+    use std::time::Duration;
 
     #[test]
     fn basic_pool() {
+        let pool = Threadpool::new(2);
+
+        let f = || {
+            println!("Message");
+            thread::sleep(Duration::from_secs(1));
+        };
+
+        pool.run(f.clone());
+        pool.run(f);
+
+        // wait for the jobs to complete (bad)
+        thread::sleep(Duration::from_secs(3));
+    }
+
+    #[test]
+    fn concurrent_work() {
+        use std::sync::atomic::{AtomicU32, Ordering};
+
         let pool = Threadpool::new(4);
-        pool.run(|| println!("hello!"));
-        
-        assert_eq!(2 + 2, 4);
+
+        let mut count = AtomicU32::new(0);
+        let work = || {
+            count.fetch_add(1, Ordering::SeqCst);
+        };
+
+        pool.run(work);
+        pool.run(work);
     }
 }

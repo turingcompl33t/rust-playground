@@ -1,5 +1,5 @@
 [package]
-name = "webserver"
+name = "resource-pool"
 version = "0.1.0"
 authors = ["Kyle Dotterrer <kdotterrer@gmail.com>"]
 edition = "2018"
