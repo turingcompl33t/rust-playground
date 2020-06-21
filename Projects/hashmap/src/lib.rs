@@ -2,6 +2,7 @@
 
 #![allow(dead_code)]
 
+use std::default::Default;
 use std::borrow::Borrow;
 use std::hash::{Hash, Hasher, BuildHasher};
 use std::collections::hash_map::RandomState;
@@ -34,6 +35,56 @@ where
             item_count: 0,
             hash_builder
         }
+    }
+}
+
+pub struct OccupiedEntry<'a, K, V> {
+    entry: &'a mut (K, V)
+}
+
+pub struct VacantEntry<'a, K, V, S> {
+    map: &'a mut HashMap<K, V, S>,
+    key: K,
+    bucket: usize
+}
+
+impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
+    pub fn insert(self, value: V) -> &'a mut V {
+        let bucket = &mut self.map.buckets[self.bucket];
+        bucket.push((self.key, value));
+        self.map.item_count += 1;
+        &mut bucket.last_mut().unwrap().1
+    }
+}
+
+pub enum Entry<'a, K, V, S> {
+    Occupied(OccupiedEntry<'a, K, V>),
+    Vacant(VacantEntry<'a, K, V, S>)
+}
+
+impl<'a, K, V, S> Entry<'a, K, V, S> {
+    pub fn or_insert(self, value: V) -> &'a mut V {
+        match self {
+            Entry::Occupied(e) => &mut e.entry.1,
+            Entry::Vacant(e) => e.insert(value),
+        }
+    }
+
+    pub fn or_insert_with<F>(self, maker: F) -> &'a mut V 
+    where
+        F: FnOnce() -> V
+    {
+        match self {
+            Entry::Occupied(e) => &mut e.entry.1,
+            Entry::Vacant(e) => e.insert(maker()),
+        }
+    }
+
+    pub fn or_default(self) -> &'a mut V 
+    where
+        V: Default
+    {
+        self.or_insert_with(Default::default)
     }
 }
 
@@ -75,6 +126,21 @@ where
         }
 
         mem::replace(&mut self.buckets, new_buckets);
+    }
+
+    pub fn entry(&mut self, key: K) -> Entry<K, V, S> {
+        if self.buckets.is_empty() || self.item_count > 3*self.buckets.len()/4 {
+            self.resize();
+        }
+
+        let bucket = self.bucket(&key).expect("buckets.is_empty() handled above");
+
+        match self.buckets[bucket].iter().position(|&(ref ekey, _)| ekey == &key) {
+            Some(index) => Entry::Occupied(OccupiedEntry{
+                entry: &mut self.buckets[bucket][index]
+            }),
+            None => Entry::Vacant(VacantEntry{ map: self, key, bucket }),
+        }
     }
 
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
@@ -229,5 +295,18 @@ mod tests {
         }
 
         assert_eq!((&map).into_iter().count(), 3);
+    }
+
+    #[test]
+    fn entry() {
+        let mut map : HashMap<i32, i32> = HashMap::new();
+
+        let expected = 1337;
+
+        assert_eq!(map.len(), 0);
+        assert_eq!(*map.entry(0).or_insert(1337), expected);
+        assert_eq!(map.len(), 1);
+        assert_eq!(*map.entry(0).or_insert(1337), expected);
+        assert_eq!(map.len(), 1);
     }
 }
