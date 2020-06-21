@@ -127,7 +127,13 @@ where
 
         mem::replace(&mut self.buckets, new_buckets);
     }
+}
 
+impl<K, V, S> HashMap<K, V, S> 
+where
+    K: Hash + Eq,
+    S: BuildHasher
+{
     pub fn entry(&mut self, key: K) -> Entry<K, V, S> {
         if self.buckets.is_empty() || self.item_count > 3*self.buckets.len()/4 {
             self.resize();
@@ -142,7 +148,13 @@ where
             None => Entry::Vacant(VacantEntry{ map: self, key, bucket }),
         }
     }
+}
 
+impl<K, V, S> HashMap<K, V, S> 
+where
+    K: Hash + Eq,
+    S: BuildHasher
+{
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
         if self.buckets.is_empty() || self.item_count > 3*self.buckets.len()/4 {
             self.resize();
@@ -206,13 +218,79 @@ where
     }
 }
 
+impl<K, V, S> HashMap<K, V, S> 
+where
+    K: Hash + Eq,
+    S: BuildHasher
+{
+    pub fn iter<'a>(&'a self) -> Iter<'a, K, V, S> {
+        Iter::new(self)
+    }
+
+    pub fn keys<'a>(&'a self) -> Keys<'a, K, V, S> {
+        Keys::new(self)
+    }
+
+    pub fn values<'a>(&'a self) -> Values<'a, K, V, S> {
+        Values::new(self)
+    }
+}
+
 pub struct Iter<'a, K, V, S> {
     map: &'a HashMap<K, V, S>,
     bucket: usize,
     at: usize
 }
 
+pub struct IterMut<'a, K, V, S> {
+    map: &'a mut HashMap<K, V, S>,
+    bucket: usize,
+    at: usize
+}
+
+pub struct Keys<'a, K, V, S> {
+    map: &'a HashMap<K, V, S>,
+    bucket: usize,
+    at: usize
+}
+
+pub struct Values<'a, K, V, S> {
+    map: &'a HashMap<K, V, S>,
+    bucket: usize,
+    at: usize
+}
+
 impl<'a, K, V, S> Iter<'a, K, V, S> {
+    pub(crate) fn new(map: &'a HashMap<K, V, S>) -> Self {
+        Self {
+            map,
+            bucket: 0,
+            at: 0
+        }
+    }
+}
+
+// impl<'a, K, V, S> IterMut<'a, K, V, S> {
+//     pub(crate) fn new(map: &'a mut HashMap<K, V, S>) -> Self {
+//         Self {
+//             map,
+//             bucket: 0,
+//             at: 0
+//         }
+//     }
+// }
+
+impl<'a, K, V, S> Keys<'a, K, V, S> {
+    pub(crate) fn new(map: &'a HashMap<K, V, S>) -> Self {
+        Self {
+            map,
+            bucket: 0,
+            at: 0
+        }
+    }
+}
+
+impl<'a, K, V, S> Values<'a, K, V, S> {
     pub(crate) fn new(map: &'a HashMap<K, V, S>) -> Self {
         Self {
             map,
@@ -240,11 +318,83 @@ impl<'a, K, V, S> Iterator for Iter<'a, K, V, S> {
                         },
                     }
                 },
-                None => break None
+                None => break None,
             }
         }
     }
 } 
+
+// impl<'a, K, V, S> Iterator for IterMut<'a, K, V, S> {
+//     type Item = (&'a K, &'a mut V);
+//     fn next(&mut self) -> Option<Self::Item> {
+//         loop {
+//             match self.map.buckets.get(self.bucket) {
+//                 Some(bucket) => {
+//                     match bucket.get_mut(self.at) {
+//                         Some(&mut (ref k, ref mut v)) => {
+//                             self.at += 1;
+//                             break Some((k, v));
+//                         },
+//                         None => {
+//                             self.bucket += 1;
+//                             self.at = 0;
+//                             continue;
+//                         },
+//                     }
+//                 },
+//                 None => break None,
+//             }
+//         }
+//     }
+// }
+
+impl<'a, K, V, S> Iterator for Keys<'a, K, V, S> {
+    type Item = &'a K;
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.map.buckets.get(self.bucket) {
+                Some(bucket) => {
+                    match bucket.get(self.at) {
+                        Some(&(ref k, _)) => {
+                            self.at += 1;
+                            break Some(k);
+                        },
+                        None => {
+                            self.bucket += 1;
+                            self.at = 0;
+                            continue;
+                        },
+                    }
+                },
+                None => break None,
+            }
+        }
+    }
+}
+
+impl<'a, K, V, S> Iterator for Values<'a, K, V, S> {
+    type Item = &'a V;
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.map.buckets.get(self.bucket) {
+                Some(bucket) => {
+                    match bucket.get(self.at) {
+                        Some(&(_, ref v)) => {
+                            self.at += 1;
+                            break Some(v);
+                        },
+                        None => {
+                            self.bucket += 1;
+                            self.at = 0;
+                            continue;
+                        },
+                    }
+                },
+                None => break None,
+            }
+        }
+    }
+}
 
 impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S> {
     type Item = (&'a K, &'a V);
@@ -295,6 +445,36 @@ mod tests {
         }
 
         assert_eq!((&map).into_iter().count(), 3);
+    }
+
+    #[test]
+    fn keys_iteration() {
+        let mut map : HashMap<i32, i32> = HashMap::new();
+        map.insert(0, 0);
+        map.insert(1, 1);
+        map.insert(2, 2);
+
+        let keys: Vec<i32> = map.keys().map(|&k| k.clone()).collect();
+
+        assert_eq!(keys.len(), 3);
+        assert!(keys.contains(&0));
+        assert!(keys.contains(&1));
+        assert!(keys.contains(&2));
+    }
+
+    #[test]
+    fn values_iteration() {
+        let mut map : HashMap<i32, i32> = HashMap::new();
+        map.insert(0, 0);
+        map.insert(1, 1);
+        map.insert(2, 2);
+
+        let values: Vec<i32> = map.values().map(|&k| k.clone()).collect();
+
+        assert_eq!(values.len(), 3);
+        assert!(values.contains(&0));
+        assert!(values.contains(&1));
+        assert!(values.contains(&2));
     }
 
     #[test]
