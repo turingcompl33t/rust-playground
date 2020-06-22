@@ -270,16 +270,6 @@ impl<'a, K, V, S> Iter<'a, K, V, S> {
     }
 }
 
-// impl<'a, K, V, S> IterMut<'a, K, V, S> {
-//     pub(crate) fn new(map: &'a mut HashMap<K, V, S>) -> Self {
-//         Self {
-//             map,
-//             bucket: 0,
-//             at: 0
-//         }
-//     }
-// }
-
 impl<'a, K, V, S> Keys<'a, K, V, S> {
     pub(crate) fn new(map: &'a HashMap<K, V, S>) -> Self {
         Self {
@@ -323,30 +313,6 @@ impl<'a, K, V, S> Iterator for Iter<'a, K, V, S> {
         }
     }
 } 
-
-// impl<'a, K, V, S> Iterator for IterMut<'a, K, V, S> {
-//     type Item = (&'a K, &'a mut V);
-//     fn next(&mut self) -> Option<Self::Item> {
-//         loop {
-//             match self.map.buckets.get(self.bucket) {
-//                 Some(bucket) => {
-//                     match bucket.get_mut(self.at) {
-//                         Some(&mut (ref k, ref mut v)) => {
-//                             self.at += 1;
-//                             break Some((k, v));
-//                         },
-//                         None => {
-//                             self.bucket += 1;
-//                             self.at = 0;
-//                             continue;
-//                         },
-//                     }
-//                 },
-//                 None => break None,
-//             }
-//         }
-//     }
-// }
 
 impl<'a, K, V, S> Iterator for Keys<'a, K, V, S> {
     type Item = &'a K;
