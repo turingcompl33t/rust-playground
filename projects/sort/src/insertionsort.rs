@@ -36,16 +36,30 @@ impl Sorter for BinaryInsertionSorter {
 mod tests {
     use super::*;
     #[test]
-    fn insertion_sorter() {
+    fn insertion_sorter1() {
         let mut v = vec![4, 3, 2, 1];
         InsertionSorter::sort(&mut v);
         assert_eq!(v, &[1, 2, 3, 4]);
     }
 
     #[test]
-    fn binary_insertion_sorter() {
+    fn insertion_sorter2() {
+        let mut v = vec![4, 3, 2, 1, 5];
+        InsertionSorter::sort(&mut v);
+        assert_eq!(v, &[1, 2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn binary_insertion_sorter1() {
         let mut v = vec![4, 3, 2, 1];
         BinaryInsertionSorter::sort(&mut v);
         assert_eq!(v, &[1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn binary_insertion_sorter2() {
+        let mut v = vec![4, 3, 2, 1, 5];
+        BinaryInsertionSorter::sort(&mut v);
+        assert_eq!(v, &[1, 2, 3, 4, 5]);
     }
 }

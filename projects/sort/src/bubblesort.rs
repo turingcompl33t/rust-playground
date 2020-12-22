@@ -25,9 +25,16 @@ impl Sorter for BubbleSorter {
 mod tests {
     use super::*;
     #[test]
-    fn bubble_sorter() {
+    fn bubble_sorter1() {
         let mut v = vec![4, 3, 2, 1];
         BubbleSorter::sort(&mut v);
         assert_eq!(v, &[1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn bubble_sorter2() {
+        let mut v = vec![4, 3, 2, 1, 5];
+        BubbleSorter::sort(&mut v);
+        assert_eq!(v, &[1, 2, 3, 4, 5]);
     }
 }

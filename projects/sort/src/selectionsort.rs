@@ -26,9 +26,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn selection_sorter() {
+    fn selection_sorter1() {
         let mut v = vec![4, 3, 2, 1];
         SelectionSorter::sort(&mut v);
         assert_eq!(v, &[1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn selection_sorter2() {
+        let mut v = vec![4, 3, 2, 1, 5];
+        SelectionSorter::sort(&mut v);
+        assert_eq!(v, &[1, 2, 3, 4, 5]);
     }
 }
