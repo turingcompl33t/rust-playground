@@ -43,12 +43,12 @@ impl<T> Shared<T> {
     }
 }
 
-pub struct Sender<T> {
+struct Sender<T> {
     shared: Arc<Shared<T>>
 }
 
 impl<T> Sender<T> {
-    pub fn send(&mut self, data: T) -> SendResult<T> {
+    fn send(&mut self, data: T) -> SendResult<T> {
         let mut inner = self.shared.inner.lock().unwrap();
         match inner.closed {
             true => {
@@ -88,13 +88,13 @@ impl<T> Drop for Sender<T> {
     }
 }
 
-pub struct Receiver<T> {
+struct Receiver<T> {
     shared: Arc<Shared<T>>,
     buffer: VecDeque<T>
 }
 
 impl<T> Receiver<T> {
-    pub fn recv(&mut self) -> Option<T> {
+    fn recv(&mut self) -> Option<T> {
         if let Some(v) = self.buffer.pop_front() {
             return Some(v)
         }
@@ -117,7 +117,7 @@ impl<T> Receiver<T> {
         }
     }
 
-    pub fn try_recv(&mut self) -> Option<T> {
+    fn try_recv(&mut self) -> Option<T> {
         let mut inner = self.shared.inner.lock().unwrap();
         inner.queue.pop_front()
     }
@@ -130,7 +130,32 @@ impl <T> Drop for Receiver<T> {
     }
 }
 
-pub fn unbounded_mpsc<T>() -> (Sender<T>, Receiver<T>) {
+struct RecvIterator<T> {
+    receiver: Receiver<T>
+}
+
+impl<T> RecvIterator<T> {
+    fn from_receiver(receiver: Receiver<T>) -> Self {
+        Self { receiver }
+    }
+}
+
+impl<T> Iterator for RecvIterator<T> {
+    type Item = T;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.receiver.try_recv()
+    }
+}
+
+impl<T> IntoIterator for Receiver<T> {
+    type Item = T;
+    type IntoIter = RecvIterator<T>;
+    fn into_iter(self) -> Self::IntoIter {
+        RecvIterator::from_receiver(self)
+    }
+}
+
+fn unbounded_mpsc<T>() -> (Sender<T>, Receiver<T>) {
     let shared = Arc::new(Shared::<T>::new(Inner::<T>::new()));
     (
         Sender::<T> {
@@ -173,5 +198,14 @@ mod tests {
         let (mut tx, rx) = unbounded_mpsc::<i32>();
         drop(rx);
         assert_eq!(tx.send(1), SendResult::Failure(1));
+    }
+
+    #[test]
+    fn iterator() {
+        let (mut tx, rx) = unbounded_mpsc::<i32>();
+        assert_eq!(tx.send(1), SendResult::Success);
+        assert_eq!(tx.send(2), SendResult::Success);
+        let v: Vec<_> = rx.into_iter().collect();
+        assert_eq!(v, vec![1, 2]);
     }
 }
