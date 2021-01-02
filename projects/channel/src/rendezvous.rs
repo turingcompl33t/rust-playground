@@ -82,8 +82,8 @@ pub struct Receiver<T> {
 
 impl<T> Receiver<T> {
     pub fn recv(&mut self) -> Result<T, ()> {
-        let mut inner = self.shared.inner.lock().unwrap();
-        
+        let mut _inner = self.shared.inner.lock().unwrap();
+        Err(())
     }
 }
 

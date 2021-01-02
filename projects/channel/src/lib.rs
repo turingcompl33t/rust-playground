@@ -1,5 +1,5 @@
 // lib.rs
 
-mod rendezvous;
-mod bounded_mpsc;
-mod unbounded_mpsc;
+pub mod rendezvous;
+pub mod bounded_mpsc;
+pub mod unbounded_mpsc;

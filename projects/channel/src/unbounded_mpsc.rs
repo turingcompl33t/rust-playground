@@ -4,19 +4,18 @@
 // Adapted from implementation from Jon Gjengset's stream "Crust of Rust: Channels"
 
 use std::collections::VecDeque;
-use std::sync::{Arc, Mutex, Condvar};
+use std::sync::{Arc, Condvar, Mutex};
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum SendResult<T> {
     Success,
-    Failure(T)
+    Failure(T),
 }
 
 struct Inner<T> {
     queue: VecDeque<T>,
     n_txs: usize,
-    closed: bool
+    closed: bool,
 }
 
 impl<T> Inner<T> {
@@ -24,36 +23,34 @@ impl<T> Inner<T> {
         Self {
             queue: VecDeque::new(),
             n_txs: 1,
-            closed: false
+            closed: false,
         }
     }
 }
 
 struct Shared<T> {
     inner: Mutex<Inner<T>>,
-    tx_post: Condvar
+    tx_post: Condvar,
 }
 
 impl<T> Shared<T> {
     fn new(inner: Inner<T>) -> Self {
         Self {
             inner: Mutex::new(inner),
-            tx_post: Condvar::new()
+            tx_post: Condvar::new(),
         }
     }
 }
 
 pub struct Sender<T> {
-    shared: Arc<Shared<T>>
+    shared: Arc<Shared<T>>,
 }
 
 impl<T> Sender<T> {
     pub fn send(&mut self, data: T) -> SendResult<T> {
         let mut inner = self.shared.inner.lock().unwrap();
         match inner.closed {
-            true => {
-                SendResult::Failure(data)
-            }
+            true => SendResult::Failure(data),
             false => {
                 inner.queue.push_back(data);
                 drop(inner);
@@ -71,7 +68,7 @@ impl<T> Clone for Sender<T> {
         drop(inner);
 
         Self {
-            shared: Arc::clone(&self.shared)
+            shared: Arc::clone(&self.shared),
         }
     }
 }
@@ -90,13 +87,13 @@ impl<T> Drop for Sender<T> {
 
 pub struct Receiver<T> {
     shared: Arc<Shared<T>>,
-    buffer: VecDeque<T>
+    buffer: VecDeque<T>,
 }
 
 impl<T> Receiver<T> {
     pub fn recv(&mut self) -> Option<T> {
         if let Some(v) = self.buffer.pop_front() {
-            return Some(v)
+            return Some(v);
         }
 
         let mut inner = self.shared.inner.lock().unwrap();
@@ -108,7 +105,7 @@ impl<T> Receiver<T> {
                     }
 
                     return Some(v);
-                },
+                }
                 None if 0 == inner.n_txs => return None,
                 None => {
                     inner = self.shared.tx_post.wait(inner).unwrap();
@@ -123,7 +120,7 @@ impl<T> Receiver<T> {
     }
 }
 
-impl <T> Drop for Receiver<T> {
+impl<T> Drop for Receiver<T> {
     fn drop(&mut self) {
         let mut inner = self.shared.inner.lock().unwrap();
         inner.closed = true;
@@ -131,7 +128,7 @@ impl <T> Drop for Receiver<T> {
 }
 
 pub struct RecvIterator<T> {
-    receiver: Receiver<T>
+    receiver: Receiver<T>,
 }
 
 impl<T> RecvIterator<T> {
@@ -159,13 +156,12 @@ pub fn unbounded_mpsc<T>() -> (Sender<T>, Receiver<T>) {
     let shared = Arc::new(Shared::<T>::new(Inner::<T>::new()));
     (
         Sender::<T> {
-            shared: Arc::clone(&shared)
+            shared: Arc::clone(&shared),
         },
-
         Receiver::<T> {
             shared: Arc::clone(&shared),
-            buffer: VecDeque::<T>::new()
-        }
+            buffer: VecDeque::<T>::new(),
+        },
     )
 }
 
