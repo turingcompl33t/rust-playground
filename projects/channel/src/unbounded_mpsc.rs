@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex, Condvar};
 
 #[derive(Debug)]
 #[derive(PartialEq)]
-enum SendResult<T> {
+pub enum SendResult<T> {
     Success,
     Failure(T)
 }
@@ -43,12 +43,12 @@ impl<T> Shared<T> {
     }
 }
 
-struct Sender<T> {
+pub struct Sender<T> {
     shared: Arc<Shared<T>>
 }
 
 impl<T> Sender<T> {
-    fn send(&mut self, data: T) -> SendResult<T> {
+    pub fn send(&mut self, data: T) -> SendResult<T> {
         let mut inner = self.shared.inner.lock().unwrap();
         match inner.closed {
             true => {
@@ -88,13 +88,13 @@ impl<T> Drop for Sender<T> {
     }
 }
 
-struct Receiver<T> {
+pub struct Receiver<T> {
     shared: Arc<Shared<T>>,
     buffer: VecDeque<T>
 }
 
 impl<T> Receiver<T> {
-    fn recv(&mut self) -> Option<T> {
+    pub fn recv(&mut self) -> Option<T> {
         if let Some(v) = self.buffer.pop_front() {
             return Some(v)
         }
@@ -117,7 +117,7 @@ impl<T> Receiver<T> {
         }
     }
 
-    fn try_recv(&mut self) -> Option<T> {
+    pub fn try_recv(&mut self) -> Option<T> {
         let mut inner = self.shared.inner.lock().unwrap();
         inner.queue.pop_front()
     }
@@ -130,12 +130,12 @@ impl <T> Drop for Receiver<T> {
     }
 }
 
-struct RecvIterator<T> {
+pub struct RecvIterator<T> {
     receiver: Receiver<T>
 }
 
 impl<T> RecvIterator<T> {
-    fn from_receiver(receiver: Receiver<T>) -> Self {
+    pub fn from_receiver(receiver: Receiver<T>) -> Self {
         Self { receiver }
     }
 }
@@ -155,7 +155,7 @@ impl<T> IntoIterator for Receiver<T> {
     }
 }
 
-fn unbounded_mpsc<T>() -> (Sender<T>, Receiver<T>) {
+pub fn unbounded_mpsc<T>() -> (Sender<T>, Receiver<T>) {
     let shared = Arc::new(Shared::<T>::new(Inner::<T>::new()));
     (
         Sender::<T> {
