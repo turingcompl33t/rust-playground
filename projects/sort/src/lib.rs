@@ -1,20 +1,26 @@
 // lib.rs
 
 pub trait Sorter {
-    fn sort<T>(slice: &mut [T]) where T: Ord;
+    fn sort<T>(slice: &mut [T])
+    where
+        T: Ord + Clone + Default;
 }
 
-mod bubblesort;
-mod insertionsort;
-mod selectionsort;
-mod quicksort;
+pub mod bubblesort;
+pub mod insertionsort;
+pub mod mergesort;
+pub mod quicksort;
+pub mod selectionsort;
 
 #[cfg(test)]
 mod tests {
     use super::*;
     struct StdSorter;
     impl Sorter for StdSorter {
-        fn sort<T>(slice: &mut [T]) where T: Ord {
+        fn sort<T>(slice: &mut [T])
+        where
+            T: Ord,
+        {
             slice.sort();
         }
     }

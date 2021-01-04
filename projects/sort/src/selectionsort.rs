@@ -5,7 +5,8 @@ use super::Sorter;
 pub struct SelectionSorter;
 impl Sorter for SelectionSorter {
     fn sort<T>(slice: &mut [T])
-        where T: Ord
+    where
+        T: Ord,
     {
         for unsorted in 0..slice.len() {
             let smallest_in_rest = slice[unsorted..]

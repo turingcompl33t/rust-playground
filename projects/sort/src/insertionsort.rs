@@ -4,8 +4,9 @@ use super::Sorter;
 
 pub struct InsertionSorter;
 impl Sorter for InsertionSorter {
-    fn sort<T>(slice: &mut [T]) 
-        where T: Ord,
+    fn sort<T>(slice: &mut [T])
+    where
+        T: Ord,
     {
         for unsorted in 1..slice.len() {
             let mut i = unsorted;
@@ -20,7 +21,8 @@ impl Sorter for InsertionSorter {
 pub struct BinaryInsertionSorter;
 impl Sorter for BinaryInsertionSorter {
     fn sort<T>(slice: &mut [T])
-        where T: Ord 
+    where
+        T: Ord,
     {
         for unsorted in 1..slice.len() {
             let i = match slice[..unsorted].binary_search(&slice[unsorted]) {

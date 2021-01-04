@@ -4,8 +4,9 @@ use super::Sorter;
 
 pub struct QuickSorter;
 impl Sorter for QuickSorter {
-    fn sort<T>(slice: &mut [T]) 
-        where T: Ord,
+    fn sort<T>(slice: &mut [T])
+    where
+        T: Ord,
     {
         let r = slice.len() - 1;
         quicksort(slice, 0, r);
@@ -38,10 +39,9 @@ fn partition<T: Ord>(slice: &mut [T], p: usize, r: usize) -> usize {
     }
     // move the pivot to its final position
     slice.swap(r, q);
-    
+
     q
 }
-
 
 // John's version of QuickSort from stream
 #[allow(dead_code)]
@@ -53,7 +53,7 @@ fn quicksort_alt<T: Ord>(slice: &mut [T]) {
                 slice.swap(0, 1);
             }
             return;
-        },
+        }
         _ => {}
     }
 
@@ -116,7 +116,7 @@ mod tests {
     fn partition1() {
         let mut v = vec![4, 3, 2, 1];
         let r = v.len() - 1;
-        let p = partition(& mut v, 0, r);
+        let p = partition(&mut v, 0, r);
         assert_eq!(p, 0);
         assert_eq!(*v.get(p).unwrap(), 1);
     }

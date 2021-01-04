@@ -5,8 +5,9 @@ use super::Sorter;
 pub struct BubbleSorter;
 
 impl Sorter for BubbleSorter {
-    fn sort<T>(slice: &mut [T]) 
-        where T: Ord 
+    fn sort<T>(slice: &mut [T])
+    where
+        T: Ord,
     {
         let mut swapped = true;
         while swapped {
