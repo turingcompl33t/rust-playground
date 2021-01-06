@@ -1,10 +1,10 @@
 // lib.rs
 // Re-implementation of std::vec::Vec from Ryan Levick's stream.
 
-use std::alloc;
 use std::mem;
 use std::ptr;
 use std::ptr::NonNull;
+use std::{alloc, ops::Bound, ops::RangeBounds};
 
 pub struct Vector<T> {
     ptr: NonNull<T>,
@@ -139,6 +139,38 @@ impl<T> Vector<T> {
     pub fn iter(&self) -> Iter<'_, T> {
         Iter::new(&self)
     }
+
+    pub fn drain<R>(&mut self, range: R) -> Drain<'_, T>
+    where
+        R: RangeBounds<usize>,
+    {
+        let begin = match range.start_bound() {
+            Bound::Included(&i) => i,
+            Bound::Unbounded => 0,
+            _ => panic!("Malformed RangeBounds in drain()"),
+        };
+        let end = match range.end_bound() {
+            Bound::Excluded(&i) => i,
+            Bound::Unbounded => self.len,
+            _ => panic!("Malformed RangeBounds in drain()"),
+        };
+
+        println!("{} {}", begin, end);
+        println!("{}", end - begin);
+        Drain {
+            idx: begin,
+            cur: 0,
+            len: end - begin,
+            vec: self,
+        }
+    }
+
+    pub fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<'_, T, F>
+    where
+        F: FnMut(&mut T) -> bool,
+    {
+        DrainFilter {idx: 0, filter, vec: self}
+    }
 }
 
 impl<T> Drop for Vector<T> {
@@ -178,6 +210,51 @@ impl<'a, T> Iterator for Iter<'a, T> {
         let tmp = self.idx;
         self.idx += 1;
         self.vec.get(tmp)
+    }
+}
+
+pub struct Drain<'a, T> {
+    idx: usize,
+    cur: usize,
+    len: usize,
+    vec: &'a mut Vector<T>,
+}
+
+impl<'a, T> Iterator for Drain<'a, T> {
+    type Item = T;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.cur < self.len {
+            self.cur += 1;
+            Some(self.vec.remove(self.idx))
+        } else {
+            None
+        }
+    }
+}
+
+pub struct DrainFilter<'a, T, F> {
+    idx: usize,
+    filter: F,
+    vec: &'a mut Vector<T>,
+}
+
+impl<'a, T, F> Iterator for DrainFilter<'a, T, F>
+where
+    F: FnMut(&mut T) -> bool,
+{
+    type Item = T;
+    fn next(&mut self) -> Option<Self::Item> {
+        let func = &mut self.filter;
+        while self.idx < self.vec.len() {
+            if func(self.vec.get_mut(self.idx).unwrap()) {
+                let tmp = self.idx;
+                self.idx += 1;
+                return Some(self.vec.remove(tmp));
+            }
+            self.idx += 1;
+        }
+
+        None
     }
 }
 
@@ -283,5 +360,52 @@ mod tests {
 
         let std: Vec<i32> = vec.iter().cloned().collect();
         assert_eq!(std, vec![0, 1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn drain1() {
+        let mut vec = Vector::<i32>::new();
+        for i in 0..5 {
+            vec.push(i);
+        }
+
+        let res: Vec<_> = vec.drain(..).collect();
+        assert_eq!(res, vec![0, 1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn drain2() {
+        let mut vec = Vector::<i32>::new();
+        for i in 0..5 {
+            vec.push(i);
+        }
+
+        let res: Vec<_> = vec.drain(..3).collect();
+        assert_eq!(res, vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn drain3() {
+        let mut vec = Vector::<i32>::new();
+        for i in 0..5 {
+            vec.push(i);
+        }
+
+        let res: Vec<_> = vec.drain(2..).collect();
+        assert_eq!(res, vec![2, 3, 4]);
+    }
+
+    #[test]
+    fn drain_filter1() {
+        let mut vec = Vector::<i32>::new();
+        for i in 0..5 {
+            vec.push(i);
+        }
+
+        let drained: Vec<_> = vec.drain_filter(|x| *x % 2 == 0).collect();
+        let remaining: Vec<_> = vec.iter().cloned().collect();
+        
+        assert_eq!(drained, vec![0, 2, 4]);
+        assert_eq!(remaining, vec![1, 3]);
     }
 }
